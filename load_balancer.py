@@ -9,9 +9,9 @@ clients = {}
 # Dictionary to store server details: IP, efficiency, and response time
 servers = {}
 # List of available client IP addresses
-available_client_ips = ["10.0.1.1", "10.0.1.3"]
+available_client_ips = ["10.0.1.1", "10.0.1.3"," 10.0.1.4", "10.0.1.5"]
 # List of available server IP addresses
-available_server_ips = ["10.0.0.1", "10.0.0.2","10.0.0.3","10.0.1.3"]
+available_server_ips = ["10.0.0.1", "10.0.0.2","10.0.0.3","10.0.1.1", "10.0.1.3"," 10.0.1.4", "10.0.1.5"]
 # Mapping of sockets to IPs (clients or servers)
 client_sockets = {}
 # Mapping of server IPs to their respective sockets
