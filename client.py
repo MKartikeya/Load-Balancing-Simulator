@@ -2,7 +2,7 @@ import tkinter as tk
 import socket
 import threading
 import time
-
+from queue import Queue
 
 def send_requests(client_socket, rps):
     """
