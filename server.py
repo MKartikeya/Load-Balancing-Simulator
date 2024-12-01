@@ -116,4 +116,3 @@ btn_send_details.grid_forget()
 root.mainloop()
 
 
-

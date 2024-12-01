@@ -3,6 +3,7 @@ import socket
 import threading
 import time
 
+
 def send_requests(client_socket, rps):
     """
     Sends packets at the specified rate (requests per second) and measures response time.
@@ -11,9 +12,10 @@ def send_requests(client_socket, rps):
     while True:
         try:
             start_time = time.time()
-            #the packet should contain the following fields: client ip address, client name, timestamp, processing time, request type
-            packet = "{},{},{},{},{}".format(entry_client_ip.get(), entry_name.get(), time.time(), entry_proc_time.get(), "PING")
-            #send the packet to the load balancer
+            # the packet should contain the following fields: client ip address, client name, timestamp, processing time, request type
+            packet = "{},{},{},{},{}".format(entry_client_ip.get(), entry_name.get(), time.time(),
+                                             entry_proc_time.get(), "PING")
+            # send the packet to the load balancer
             client_socket.sendall(packet.encode('utf-8'))
             response = client_socket.recv(1024)
             end_time = time.time()
@@ -23,6 +25,7 @@ def send_requests(client_socket, rps):
         except Exception as e:
             print("Error during request: {}".format(e))
             break
+
 
 def connect_to_load_balancer():
     client_name = entry_name.get()
@@ -48,7 +51,7 @@ def connect_to_load_balancer():
             label_status.config(text=", ".join(ip_addresses), fg="green")
         else:
             label_status.config(text="Connection successful! Please enter RPS and processing time.", fg="green")
-            
+
             # Remove previous fields
             entry_name.grid_forget()
             entry_client_ip.grid_forget()
@@ -62,12 +65,13 @@ def connect_to_load_balancer():
             entry_rps.config(state="normal")
             entry_proc_time.config(state="normal")
             btn_start_requests.config(state="normal")
-            
+
             # Save the socket for later use in the RPS thread
             root.client_socket = client_socket
 
     except Exception as e:
         label_status.config(text="Connection failed: {}".format(e), fg="red")
+
 
 def start_sending_requests():
     rps = int(entry_rps.get())
@@ -77,7 +81,9 @@ def start_sending_requests():
     # Start sending requests at the specified rate
     threading.Thread(target=send_requests, args=(client_socket, rps), daemon=True).start()
 
-    label_status.config(text="Started sending requests at {} RPS with {} ms processing time.".format(rps, processing_time), fg="green")
+    label_status.config(
+        text="Started sending requests at {} RPS with {} ms processing time.".format(rps, processing_time), fg="green")
+
 
 # GUI setup
 root = tk.Tk()
