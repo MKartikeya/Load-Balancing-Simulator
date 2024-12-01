@@ -1,13 +1,23 @@
 import tkinter as tk
 import socket
 import threading
+from queue import Queue
+import time
+
+packet_queue = Queue()
+response_time = 0
+server_ip = None
 
 def send_server_details(server_socket):
     """
     Sends server efficiency and average response time details to the load balancer.
     """
+    global response_time
     efficiency = entry_efficiency.get()
     avg_response_time = entry_response_time.get()
+    #set the response time
+    response_time = avg_response_time
+
 
     if not efficiency or not avg_response_time:
         label_status.config(text="All fields are required!", fg="red")
@@ -32,6 +42,7 @@ def connect_to_load_balancer():
     """
     Establishes a connection to the load balancer.
     """
+    global server_ip
     server_ip = entry_server_ip.get()
     load_balancer_ip = entry_lb_ip.get()
 
@@ -71,10 +82,36 @@ def connect_to_load_balancer():
 
             # Save the socket for later communication
             root.server_socket = server_socket
+
+            while True:
+                try:
+                    request = server_socket.recv(1024).decode('utf-8')
+                    if request:
+                        packet_queue.put(request)
+                except Exception as e:
+                    print("Error receiving data: {}".format(e))
         else:
             label_status.config(text="Error: {}".format(response), fg="red")
     except Exception as e:
         label_status.config(text="Connection failed: {}".format(e), fg="red")
+
+def handle_requests(server_socket):
+    """
+    Handles incoming requests from the load balancer.
+    """
+    while True:
+        if not packet_queue.empty():
+            request = packet_queue.get()
+            print("Received request:", request)
+
+            # Process the request
+            # Simulate processing time
+            time.sleep(response_time)
+
+            # Send response back to the load balancer
+            #append the server ip
+            response = "{},{}".format(request, server_ip)
+            server_socket.sendall(response.encode('utf-8'))
 
 
 # GUI setup

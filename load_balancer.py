@@ -134,6 +134,13 @@ def handle_server(server_socket, data):
         while True:
             # recieve the responses from the server
             response = server_socket.recv(1024).decode('utf-8')
+            if not response:
+                break
+            else:
+                response, server_ip = response.split(",",1)
+                update_servers(response,server_ip)
+
+
         
             # send the request to the client
     except Exception as e:
@@ -154,13 +161,17 @@ def update_servers(response,server_ip):
         response (str): The response packet from the server.
     """
     try:
-        packet_id_, packet = response.split(",",1)
+        packet_id_,time_stamp, packet = response.split(",",2)
         observed_time = time.time()-packet_id_timestamp[packet_id_]
         #extract the server ip
         server_ip_, response = packet.split(",",1)
         #update the server details
         servers[server_ip_]["response_time"] = observed_time*alpha + (1-alpha)*servers[server_ip_]["response_time"]
         scheduler.update_servers([details for _, details in servers.items()])
+        #forward the response to the client
+        client_ip, client_request = packet.split(",",1)
+        client_socket = client_sockets[client_ip]
+        client_socket.sendall(client_request.encode("utf-8"))
         #extract the client ip and forward to the client
 
     except Exception as e:
