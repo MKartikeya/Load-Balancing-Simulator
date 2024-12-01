@@ -5,7 +5,7 @@ from queue import Queue
 import time
 
 packet_queue = Queue()
-response_time = 0
+response_time = 1
 server_ip = None
 
 def send_server_details(server_socket):
@@ -14,9 +14,9 @@ def send_server_details(server_socket):
     """
     global response_time
     efficiency = entry_efficiency.get()
-    avg_response_time = entry_response_time.get()
+    avg_response_time = 10
 
-    if not efficiency or not avg_response_time:
+    if not efficiency :
         label_status.config(text="All fields are required!", fg="red")
         return
 
@@ -79,8 +79,8 @@ def connect_to_load_balancer():
             # Enable efficiency and response time input fields
             label_efficiency.grid(row=2, column=0, padx=10, pady=5)
             entry_efficiency.grid(row=2, column=1, padx=10, pady=5)
-            label_response_time.grid(row=3, column=0, padx=10, pady=5)
-            entry_response_time.grid(row=3, column=1, padx=10, pady=5)
+            # label_response_time.grid(row=3, column=0, padx=10, pady=5)
+            # entry_response_time.grid(row=3, column=1, padx=10, pady=5)
             btn_send_details.grid(row=4, column=0, columnspan=2, pady=10)
 
             # Save the socket for later communication
@@ -113,7 +113,7 @@ def handle_requests(server_socket):
     while True:
         if not packet_queue.empty():
             request = packet_queue.get()
-            time.sleep(response_time / 1000.0)
+            time.sleep(0.5)
             response = "Request processed by server {},{}".format(server_ip, request)
             server_socket.sendall(response.encode('utf-8'))
 

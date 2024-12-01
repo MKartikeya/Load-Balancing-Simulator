@@ -3,11 +3,11 @@ import time
 from threading import Thread, Lock
 from queue import Queue
 from algorithms.rr import RoundRobinScheduler
-
+from collections import OrderedDict
 # Dictionary to store client IPs and their names
 clients = {}
 # Dictionary to store server details: IP, efficiency, and response time
-servers = {}
+servers = OrderedDict()
 # List of available client IP addresses
 available_client_ips = ["10.0.0.1", "10.0.0.2","10.0.0.3","10.0.1.1", "10.0.1.3"," 10.0.1.4", "10.0.1.5"]
 # List of available server IP addresses
@@ -193,7 +193,12 @@ def load_balance():
             else:
                 print("No servers available to handle the request.")
 
-
+def exit_program():
+    while True:
+        if input() == "exit":
+            print("Exiting program...")
+            break
+    exit()
 
 def start_load_balancer():
     """
@@ -211,4 +216,5 @@ def start_load_balancer():
 
 
 if __name__ == "__main__":
+    Thread(target=exit_program, daemon=True).start()
     start_load_balancer()

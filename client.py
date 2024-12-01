@@ -40,7 +40,7 @@ def receive_responses(client_socket):
             response = client_socket.recv(1024).decode('utf-8')
             if not response:
                 break
-            client_ip, client_name, packet_id = response.split(",")
+            _,load_id,client_ip, client_name, packet_id = response.split(",",4)
             response_time = time.time() - packet_id_timestamp[int(packet_id)]
             avg_response_time = alpha * response_time + (1 - alpha) * avg_response_time
             # Update the displayed average response time
@@ -94,6 +94,14 @@ def connect_to_load_balancer():
     except Exception as e:
         label_status.config(text="Connection failed: {}".format(e), fg="red")
 
+def exit_client():
+    """
+    Closes the client socket and exits the application.
+    """
+    while True:
+        if input() == "exit":
+            root.destroy()
+            exit()
 
 def start_sending_requests():
     rps = int(entry_rps.get())
@@ -153,4 +161,6 @@ btn_start_requests.config(state="disabled")
 label_avg_response_time = tk.Label(root, text="")
 label_avg_response_time.grid_forget()  # Initially hidden
 
+# Create a separate thread that terminates the program after typing "exit"
+threading.Thread(target=exit_client, daemon=True).start()
 root.mainloop()
