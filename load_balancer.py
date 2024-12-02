@@ -4,15 +4,16 @@ from threading import Thread, Lock
 from queue import Queue
 from algorithms.rr import RoundRobinScheduler
 from algorithms.random import RandomScheduler
+from algorithms.lrtpp import LRTScheduler
 from collections import OrderedDict
 # Dictionary to store client IPs and their names
 clients = {}
 # Dictionary to store server details: IP, efficiency, and response time
 servers = OrderedDict()
 # List of available client IP addresses
-available_client_ips = ["10.0.0.1", "10.0.0.2","10.0.0.3","10.0.0.4","10.0.1.1", "10.0.1.3"," 10.0.1.4", "10.0.1.5"]
+available_client_ips = ["10.0.0.1", "10.0.0.2","10.0.0.3","10.0.0.4","1","2","3","4","5","6","7","8","9","10","11","12","13","14","15"]
 # List of available server IP addresses
-available_server_ips = ["10.0.0.1", "10.0.0.2","10.0.0.3","10.0.0.4","10.0.0.5","10.0.0.6","10.0.0.7","10.0.1.1", "10.0.1.3"," 10.0.1.4", "10.0.1.5"]
+available_server_ips = ["10.0.0.1", "10.0.0.2","10.0.0.3","10.0.0.4","10.0.0.5","10.0.0.6","10.0.0.7","1","2","3","4","5","6","7","8","9","10","11","12","13","14","15"]
 # Mapping of sockets to IPs (clients or servers)
 client_sockets = {}
 # Mapping of server IPs to their respective sockets
@@ -30,8 +31,9 @@ packet_id_lock = Lock()
 #packet id and time stamp lock
 packet_id_timestamp_lock = Lock()
 # Round-robin scheduler for load balancing
-# scheduler = RoundRobinScheduler()
-scheduler = RandomScheduler()
+scheduler = RoundRobinScheduler()
+# scheduler = RandomScheduler()
+# scheduler = LRTScheduler()
 #packet id and time stamp mappings
 packet_id_timestamp = {}
 server_queued_packets = {}
@@ -112,7 +114,7 @@ def handle_server(server_socket, data):
             message ="1"
             server_socket.send(message.encode('utf-8'))
             server_sockets[server_ip] = server_socket
-            servers[server_ip] = {"server_ip": server_ip, "efficiency": 0, "response_time":0 ,"socket": server_socket,"load":0}
+            servers[server_ip] = {"server_ip": server_ip, "efficiency": 0, "response_time":0 ,"socket": server_socket,"load":0,"queue_length":0,"processing_time":0.5}
             print("Server connected with IP: {}".format(server_ip))
         else:
             server_socket.send("0".encode('utf-8'))
@@ -139,9 +141,17 @@ def handle_server(server_socket, data):
                 break
             else:
                 # server_queued_packets[server_ip] -= 1
-                # servers[server_ip]["load"]  = server_queued_packets[server_ip]/1024
-                update_servers(response,server_ip)
-                print(response)
+                # if response has RTIME as header then update the server details. response in form of RTIME,
+                if response.startswith("RTIME"):
+                    try:
+                        # split to three parts RTIME,response time, server ip
+                        _,processing_time,server_ip = response.split(",",2)
+                        servers[server_ip]["processing_time"] = processing_time
+                    except Exception as e:
+                        print("Error updating server  details: {}".format(str(e)))
+                else:
+                    update_servers(response,server_ip)
+                    print(response)
     except Exception as e:
         print("Error handling server {}: {}".format(server_ip, str(e)))
     finally:
@@ -165,6 +175,7 @@ def update_servers(response,server_ip):
             observed_time = time.time()-packet_id_timestamp[packet_id_]
             del packet_id_timestamp[packet_id_]
         servers[server_ip]["response_time"] = observed_time*alpha + (1-alpha)*float(servers[server_ip]["response_time"])
+        servers[server_ip]["queue_length"] = max(0,servers[server_ip]["queue_length"]-1)
         scheduler.update_servers([details for _, details in servers.items()])
         print(response)
         client_socket = client_sockets[client_ip]

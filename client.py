@@ -121,7 +121,7 @@ def calculate_throughput():
     while True:
         time.sleep(1)
         if pack_sent > 0:
-            throughput_percentage = (pack_rec*(100.0) / pack_sent) 
+            throughput_percentage = min(100.0,(pack_rec*(100.0) / pack_sent)) 
         else:
             throughput_percentage = 0.0
         # Update the throughput label

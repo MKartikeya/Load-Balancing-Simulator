@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 # Global variables
 packet_queue = Queue()
-response_time = 0.5
+processing_time = 0.5
 server_ip = None
 buffer_size = 1024
 packets_received = 0
@@ -25,37 +25,47 @@ lock = threading.Lock()
 
 # Metrics for plotting
 metrics = {"Packet Loss": 0, "Load": 0, "Average Response Time": 0, "Incoming Packet Rate": 0}
+server_socket = None
 
 def update_efficiency(efficiency):
     """
     Adjust the server's response time based on efficiency slider value.
     """
-    global response_time
+    global processing_time, server_ip, server_socket
     with lock:
-        response_time = (0.5 * 100) / efficiency
-        print(response_time)
+        processing_time = (0.5 * 100) / efficiency
+        # send a packet to the server to update the response time with header RTIME
+        if server_socket:
+            server_socket.sendall("RTIME,{},{}".format(processing_time,server_ip).encode('utf-8'))
+
+        
+
+        # print(processing_time)
+        
 
 def update_metrics():
     """
     Updates metrics periodically for plotting.
     """
-    while True:
-        with lock:
-            metrics["Packet Loss"]  = 0
-            if packets_received>0:
-                metrics["Packet Loss"] = (packets_lost/packets_received)*100
-            metrics["Load"] = packet_queue.qsize() / buffer_size
-            metrics["Average Response Time"] = avg_response_time
-            metrics["Incoming Packet Rate"] = incoming_packet_rate
+    # while True:
+    with lock:
+        metrics["Packet Loss"]  = 0
+        if packets_received>0:
+            metrics["Packet Loss"] = (packets_lost/packets_received)*100
+        metrics["Average Response Time"] = avg_response_time
+        metrics["Incoming Packet Rate"] = incoming_packet_rate
+        # metrics["Load"] = packet_queue.qsize() / buffer_size
+        metrics["Load"] = max(100.0,incoming_packet_rate*100.0/processing_time)
 
 
-            label_packet_loss.config(text="Packet Loss: {:.2f}%".format(metrics["Packet Loss"]))
-            label_load.config(text="Load: {:.2f}%".format(metrics["Load"]))
-            label_avg_response_time.config(text="Average Response Time: {:.2f} seconds".format(metrics["Average Response Time"]))
-            label_incoming_packet_rate.config(text="Incoming Packet Rate: {} packets/second".format(metrics["Incoming Packet Rate"]))   
-            
-            # print(metrics["Packet Loss"])
-        time.sleep(1)
+        label_packet_loss.config(text="Packet Loss: {:.2f}%".format(metrics["Packet Loss"]))
+        # label_load.config(text="Load: {:.2f}%".format(metrics["Load"]))
+        label_avg_response_time.config(text="Average Response Time: {:.2f} seconds".format(metrics["Average Response Time"]))
+        # label_incoming_packet_rate.config(text="Incoming Packet Rate: {} packets/second".format(metrics["Incoming Packet Rate"]))   
+        
+        # print(metrics["Packet Loss"])
+    # time.sleep(1)
+    root.after(1000, update_metrics)
 
 def calculate_packet_rate():
     """
@@ -122,14 +132,14 @@ def listen_for_requests(server_socket):
 
 def handle_requests(server_socket):
     global avg_response_time
-    global response_time
+    global processing_time
     while True:
         # with packet_queue_lock:
         if not packet_queue.empty():
             request = packet_queue.get()
-            time.sleep(response_time)
+            time.sleep(processing_time)
             # print(request)
-            # print(response_time)
+            # print(processing_time)
             with lock:
                 packet_id, _ = request.split(",", 1)
                 observed_time = time.time() - packet_id_time_map[packet_id]
@@ -140,7 +150,7 @@ def handle_requests(server_socket):
             server_socket.sendall(response.encode('utf-8'))
 
 def connect_to_load_balancer():
-    global server_ip
+    global server_ip, server_socket
     server_ip = entry_server_ip.get()
     load_balancer_ip = entry_lb_ip.get()
 
@@ -168,10 +178,10 @@ def connect_to_load_balancer():
             label_server_ip.grid_forget()
             label_lb_ip.grid_forget()
             btn_connect.grid_forget()
-            label_load.grid(row=8, column=0, padx=10, pady=5)
+            # label_load.grid(row=8, column=0, padx=10, pady=5)
             label_avg_response_time.grid(row=9, column=0, padx=10, pady=5)
             label_packet_loss.grid(row=7, column=0, padx=10, pady=5)
-            label_incoming_packet_rate.grid(row=10, column=0, padx=10, pady=5)
+            # label_incoming_packet_rate.grid(row=10, column=0, padx=10, pady=5)
             # Start listening for requests and handling them
             threading.Thread(target=listen_for_requests, args=(server_socket,), daemon=True).start()
             threading.Thread(target=handle_requests, args=(server_socket,), daemon=True).start()
@@ -222,22 +232,22 @@ btn_plot.grid(row=6, column=0, columnspan=2, pady=10)
 efficiency_slider.set(100)
 
 #display packet loss %, load %, average response time, incoming packet rate as labels
-label_packet_loss = tk.Label(root, text="Packet Loss: 0%")
-label_packet_loss.grid_forget()
+label_packet_loss = tk.Label(root, text="Packet Loss: 0%", anchor="center")
+label_packet_loss.grid(row=7, column=0, columnspan=2, pady=5)
 
-label_load = tk.Label(root, text="Load: 0%")
-label_load.grid_forget()
+# label_load = tk.Label(root, text="Load: 0%", anchor="center")
+# label_load.grid(row=8, column=0, columnspan=2, pady=5)
 
-label_avg_response_time = tk.Label(root, text="Average Response Time: 0.0 seconds")
-label_avg_response_time.grid_forget()
+label_avg_response_time = tk.Label(root, text="Average Response Time: 0.0 seconds", anchor="center")
+label_avg_response_time.grid(row=9, column=0, columnspan=2, pady=5)
 
-label_incoming_packet_rate = tk.Label(root, text="Incoming Packet Rate: 0 packets/second")
-label_incoming_packet_rate.grid_forget()
+# label_incoming_packet_rate = tk.Label(root, text="Incoming Packet Rate: 0 packets/second", anchor="center")
+# label_incoming_packet_rate.grid(row=10, column=0, columnspan=2, pady=5)
 
 
 # Threads
 # threading.Thread(target=exit_program, daemon=True).start()
 threading.Thread(target=calculate_packet_rate, daemon=True).start()
-threading.Thread(target=update_metrics, daemon=True).start()
-
+# threading.Thread(target=update_metrics, daemon=True).start()
+root.after(1000, update_metrics)
 root.mainloop()
