@@ -8,7 +8,8 @@ packet_id = 0
 packet_id_timestamp = {}
 avg_response_time = 0
 alpha = 0.25  # Smoothing factor for exponential moving average
-
+pack_sent = 0
+pack_rec = 0
 
 def send_requests(client_socket, rps):
     """
@@ -23,6 +24,7 @@ def send_requests(client_socket, rps):
             packet = "{},{},{}".format(entry_client_ip.get(), entry_name.get(), packet_id)
             packet_id_timestamp[packet_id] = start_time
             packet_id += 1
+            pack_sent += 1
             client_socket.sendall(packet.encode('utf-8'))
             time.sleep(max(0, interval - (time.time() - start_time)))  # Maintain the rate
         except Exception as e:
@@ -46,6 +48,7 @@ def receive_responses(client_socket):
             #     packet_id
             try:
                 response_time = time.time() - packet_id_timestamp[int(packet_id)]
+                pack_rec += 1
                 del packet_id_timestamp[int(packet_id)]
                 avg_response_time = alpha * response_time + (1 - alpha) * avg_response_time
                 # Update the displayed average response time
@@ -100,6 +103,12 @@ def connect_to_load_balancer():
 
     except Exception as e:
         label_status.config(text="Connection failed: {}".format(e), fg="red")
+
+def cal_throughput():
+    global pack_sent, pack_rec
+    while True:
+        time.sleep(1)
+        print("Throughput%: ",(pack_rec-pack_sent)*100)
 
 def exit_client():
     """
@@ -170,4 +179,5 @@ label_avg_response_time.grid_forget()  # Initially hidden
 
 # Create a separate thread that terminates the program after typing "exit"
 threading.Thread(target=exit_client, daemon=True).start()
+threading.Thread(target=calculate_throughput, daemon=True).start()
 root.mainloop()

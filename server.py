@@ -45,6 +45,7 @@ def update_metrics():
             metrics["Load"] = packet_queue.qsize() / buffer_size
             metrics["Average Response Time"] = avg_response_time
             metrics["Incoming Packet Rate"] = incoming_packet_rate
+            print(metrics["Packet Loss"])
         time.sleep(1)
 
 def calculate_packet_rate():
