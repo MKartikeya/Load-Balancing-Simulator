@@ -42,6 +42,8 @@ def receive_responses(client_socket):
                 break
             _,load_id,client_ip, client_name, packet_id = response.split(",",4)
             print("Received response: {}".format(response))
+            # try:
+            #     packet_id
             response_time = time.time() - packet_id_timestamp[int(packet_id)]
             del packet_id_timestamp[int(packet_id)]
             avg_response_time = alpha * response_time + (1 - alpha) * avg_response_time

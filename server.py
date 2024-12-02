@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 # Global variables
 packet_queue = Queue()
-response_time = 1
+response_time = 0.5
 server_ip = None
 buffer_size = 1024
 packets_received = 0
@@ -21,6 +21,7 @@ load = 0
 avg_response_time = 0
 
 lock = threading.Lock()
+# packet_queue_lock = threading.Lock()
 
 # Metrics for plotting
 metrics = {"Packet Loss": 0, "Load": 0, "Average Response Time": 0, "Incoming Packet Rate": 0}
@@ -31,7 +32,8 @@ def update_efficiency(efficiency):
     """
     global response_time
     with lock:
-        response_time = response_time * efficiency / 100
+        response_time = (0.5 * 100) / efficiency
+        print(response_time)
 
 def update_metrics():
     """
@@ -91,9 +93,10 @@ def listen_for_requests(server_socket):
     while True:
         try:
             request = server_socket.recv(1024).decode('utf-8')
-            print("Received request: {}".format(request))
             if request !="":
+                # print("Received request: {}".format(request))
                 packet_id, _ = request.split(",", 1)
+                # with packet_queue_lock:
                 packet_id_time_map[packet_id] = time.time()
                 with lock:
                     packets_received += 1
@@ -108,16 +111,20 @@ def listen_for_requests(server_socket):
 
 def handle_requests(server_socket):
     global avg_response_time
+    global response_time
     while True:
+        # with packet_queue_lock:
         if not packet_queue.empty():
             request = packet_queue.get()
-            time.sleep(0.5)
+            time.sleep(response_time)
+            # print(response_time)
             with lock:
                 packet_id, _ = request.split(",", 1)
                 observed_time = time.time() - packet_id_time_map[packet_id]
                 avg_response_time = 0.1 * observed_time + 0.9 * avg_response_time
                 del packet_id_time_map[packet_id]
             response = "Request processed by server {},{}".format(server_ip, request)
+            print(response)
             server_socket.sendall(response.encode('utf-8'))
 
 def connect_to_load_balancer():
@@ -196,9 +203,10 @@ plot_selection.grid(row=5, column=0, columnspan=2, pady=10)
 
 btn_plot = tk.Button(root, text="Plot", command=plot_metrics)
 btn_plot.grid(row=6, column=0, columnspan=2, pady=10)
+efficiency_slider.set(100)
 
 # Threads
-threading.Thread(target=exit_program, daemon=True).start()
+# threading.Thread(target=exit_program, daemon=True).start()
 threading.Thread(target=calculate_packet_rate, daemon=True).start()
 threading.Thread(target=update_metrics, daemon=True).start()
 

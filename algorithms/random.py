@@ -15,7 +15,8 @@ class RandomScheduler:
         if server_ip in self.servers:
             self.servers.remove(server_ip)
 
-    def get_server(self):
+    def get_next_server(self):
         if not self.servers:
             raise Exception("No available servers.")
+        # print(LEN(SERVER))
         return random.choice(self.servers)

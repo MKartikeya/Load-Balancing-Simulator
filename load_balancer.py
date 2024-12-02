@@ -3,6 +3,7 @@ import time
 from threading import Thread, Lock
 from queue import Queue
 from algorithms.rr import RoundRobinScheduler
+from algorithms.random import RandomScheduler
 from collections import OrderedDict
 # Dictionary to store client IPs and their names
 clients = {}
@@ -30,6 +31,7 @@ packet_id_lock = Lock()
 packet_id_timestamp_lock = Lock()
 # Round-robin scheduler for load balancing
 scheduler = RoundRobinScheduler()
+# scheduler = RandomScheduler()
 #packet id and time stamp mappings
 packet_id_timestamp = {}
 server_queued_packets = {}
@@ -136,9 +138,10 @@ def handle_server(server_socket, data):
             if not response:
                 break
             else:
-                server_queued_packets[server_ip] -= 1
-                servers[server_ip]["load"]  = server_queued_packets[server_ip]/1024
+                # server_queued_packets[server_ip] -= 1
+                # servers[server_ip]["load"]  = server_queued_packets[server_ip]/1024
                 update_servers(response,server_ip)
+                print(response)
     except Exception as e:
         print("Error handling server {}: {}".format(server_ip, str(e)))
     finally:
@@ -157,8 +160,9 @@ def update_servers(response,server_ip):
     """
     try:
         _,packet_id_,client_ip,packet = response.split(",",3)
-        observed_time = time.time()-packet_id_timestamp[packet_id_]
+        observed_time = 0
         with packet_id_timestamp_lock:
+            observed_time = time.time()-packet_id_timestamp[packet_id_]
             del packet_id_timestamp[packet_id_]
         servers[server_ip]["response_time"] = observed_time*alpha + (1-alpha)*float(servers[server_ip]["response_time"])
         scheduler.update_servers([details for _, details in servers.items()])
