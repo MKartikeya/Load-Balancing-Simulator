@@ -9,7 +9,7 @@ clients = {}
 # Dictionary to store server details: IP, efficiency, and response time
 servers = OrderedDict()
 # List of available client IP addresses
-available_client_ips = ["10.0.0.1", "10.0.0.2","10.0.0.3","10.0.1.1", "10.0.1.3"," 10.0.1.4", "10.0.1.5"]
+available_client_ips = ["10.0.0.1", "10.0.0.2","10.0.0.3","10.0.0.4","10.0.1.1", "10.0.1.3"," 10.0.1.4", "10.0.1.5"]
 # List of available server IP addresses
 available_server_ips = ["10.0.0.1", "10.0.0.2","10.0.0.3","10.0.0.4","10.0.0.5","10.0.0.6","10.0.0.7","10.0.1.1", "10.0.1.3"," 10.0.1.4", "10.0.1.5"]
 # Mapping of sockets to IPs (clients or servers)
@@ -32,6 +32,7 @@ packet_id_timestamp_lock = Lock()
 scheduler = RoundRobinScheduler()
 #packet id and time stamp mappings
 packet_id_timestamp = {}
+server_queued_packets = {}
 
 def handle_request(client_socket):
     """
@@ -109,6 +110,7 @@ def handle_server(server_socket, data):
             message ="1"
             server_socket.send(message.encode('utf-8'))
             server_sockets[server_ip] = server_socket
+            servers[server_ip] = {"server_ip": server_ip, "efficiency": 0, "response_time":0 ,"socket": server_socket,"load":0}
             print("Server connected with IP: {}".format(server_ip))
         else:
             server_socket.send("0".encode('utf-8'))
@@ -119,21 +121,23 @@ def handle_server(server_socket, data):
         print("Error handling server: {}".format(str(e)))
         server_socket.close()
         return
-    try:
-        efficiency, response_time = server_socket.recv(1024).decode('utf-8').split(",")
-        servers[server_ip] = {"server_ip": server_ip, "efficiency": efficiency, "response_time": response_time,"socket": server_socket}
-        server_socket.send("1".encode('utf-8'))  # Acknowledge successful connection
-        print("Server configuration received: Efficiency {}, Response Time {}".format(efficiency, response_time))
-    except Exception as e:
-        print("Error handling server: {}".format(str(e)))
-        server_socket.close()
-        return
+    # try:
+    #     efficiency, response_time = server_socket.recv(1024).decode('utf-8').split(",")
+    #     servers[server_ip] = {"server_ip": server_ip, "efficiency": efficiency, "response_time": response_time,"socket": server_socket}
+    #     server_socket.send("1".encode('utf-8'))  # Acknowledge successful connection
+    #     print("Server configuration received: Efficiency {}, Response Time {}".format(efficiency, response_time))
+    # except Exception as e:
+    #     print("Error handling server: {}".format(str(e)))
+    #     server_socket.close()
+    #     return
     try:
         while True:
             response = server_socket.recv(1024).decode('utf-8')
             if not response:
                 break
             else:
+                server_queued_packets[server_ip] -= 1
+                servers[server_ip]["load"]  = server_queued_packets[server_ip]/1024
                 update_servers(response,server_ip)
     except Exception as e:
         print("Error handling server {}: {}".format(server_ip, str(e)))
@@ -154,6 +158,8 @@ def update_servers(response,server_ip):
     try:
         _,packet_id_,client_ip,packet = response.split(",",3)
         observed_time = time.time()-packet_id_timestamp[packet_id_]
+        with packet_id_timestamp_lock:
+            del packet_id_timestamp[packet_id_]
         servers[server_ip]["response_time"] = observed_time*alpha + (1-alpha)*float(servers[server_ip]["response_time"])
         scheduler.update_servers([details for _, details in servers.items()])
         print(response)
@@ -178,10 +184,9 @@ def load_balance():
             packet_id_, cr = client_request.split(",",1)
             scheduler.update_servers([details for _, details in servers.items()])
             selected_server = scheduler.get_next_server()
-            print("Selected server: ",selected_server)
-
             if selected_server:
                 try:
+                    server_queued_packets[selected_server["server_ip"]] += 1
                     server_socket = selected_server["socket"]
                     server_socket.sendall(client_request.encode("utf-8"))
                     #update the packet id and timestamp
@@ -207,7 +212,7 @@ def start_load_balancer():
     server_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
     server_socket.bind(('10.0.0.3', 20001))  # Listen on load balancer IP and port
     server_socket.listen(5)
-    print("Load Balancer is running and accepting connections...")
+    print("Load Balancer is running ...")
     Thread(target=load_balance, daemon=True).start()
     while True:
         client_socket, client_address = server_socket.accept()
