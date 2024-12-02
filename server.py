@@ -41,11 +41,20 @@ def update_metrics():
     """
     while True:
         with lock:
-            metrics["Packet Loss"] = packets_lost
+            metrics["Packet Loss"]  = 0
+            if packets_received>0:
+                metrics["Packet Loss"] = (packets_lost/packets_received)*100
             metrics["Load"] = packet_queue.qsize() / buffer_size
             metrics["Average Response Time"] = avg_response_time
             metrics["Incoming Packet Rate"] = incoming_packet_rate
-            print(metrics["Packet Loss"])
+
+
+            label_packet_loss.config(text="Packet Loss: {:.2f}%".format(metrics["Packet Loss"]))
+            label_load.config(text="Load: {:.2f}%".format(metrics["Load"]))
+            label_avg_response_time.config(text="Average Response Time: {:.2f} seconds".format(metrics["Average Response Time"]))
+            label_incoming_packet_rate.config(text="Incoming Packet Rate: {} packets/second".format(metrics["Incoming Packet Rate"]))   
+            
+            # print(metrics["Packet Loss"])
         time.sleep(1)
 
 def calculate_packet_rate():
@@ -159,6 +168,10 @@ def connect_to_load_balancer():
             label_server_ip.grid_forget()
             label_lb_ip.grid_forget()
             btn_connect.grid_forget()
+            label_load.grid(row=8, column=0, padx=10, pady=5)
+            label_avg_response_time.grid(row=9, column=0, padx=10, pady=5)
+            label_packet_loss.grid(row=7, column=0, padx=10, pady=5)
+            label_incoming_packet_rate.grid(row=10, column=0, padx=10, pady=5)
             # Start listening for requests and handling them
             threading.Thread(target=listen_for_requests, args=(server_socket,), daemon=True).start()
             threading.Thread(target=handle_requests, args=(server_socket,), daemon=True).start()
@@ -207,6 +220,20 @@ plot_selection.grid(row=5, column=0, columnspan=2, pady=10)
 btn_plot = tk.Button(root, text="Plot", command=plot_metrics)
 btn_plot.grid(row=6, column=0, columnspan=2, pady=10)
 efficiency_slider.set(100)
+
+#display packet loss %, load %, average response time, incoming packet rate as labels
+label_packet_loss = tk.Label(root, text="Packet Loss: 0%")
+label_packet_loss.grid_forget()
+
+label_load = tk.Label(root, text="Load: 0%")
+label_load.grid_forget()
+
+label_avg_response_time = tk.Label(root, text="Average Response Time: 0.0 seconds")
+label_avg_response_time.grid_forget()
+
+label_incoming_packet_rate = tk.Label(root, text="Incoming Packet Rate: 0 packets/second")
+label_incoming_packet_rate.grid_forget()
+
 
 # Threads
 # threading.Thread(target=exit_program, daemon=True).start()

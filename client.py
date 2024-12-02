@@ -6,25 +6,32 @@ from queue import Queue
 
 packet_id = 0
 packet_id_timestamp = {}
+packet_id_timestamp_lock = threading.Lock()
 avg_response_time = 0
 alpha = 0.25  # Smoothing factor for exponential moving average
 pack_sent = 0
 pack_rec = 0
+pack_sent_lock = threading.Lock()
+packet_rec_lock = threading.Lock()
 
 def send_requests(client_socket, rps):
     """
     Sends packets at the specified rate (requests per second) and measures response time.
     """
     global packet_id
+    global packet_id_timestamp
+    global avg_response_time ,pack_rec ,pack_sent
     interval = 1 / rps
     while True:
         try:
             start_time = time.time()
             # Packet fields: client IP, client name, packet ID
             packet = "{},{},{}".format(entry_client_ip.get(), entry_name.get(), packet_id)
-            packet_id_timestamp[packet_id] = start_time
-            packet_id += 1
-            pack_sent += 1
+            with packet_id_timestamp_lock:
+                packet_id_timestamp[packet_id] = start_time
+            with pack_sent_lock: 
+                packet_id += 1
+                pack_sent += 1
             client_socket.sendall(packet.encode('utf-8'))
             time.sleep(max(0, interval - (time.time() - start_time)))  # Maintain the rate
         except Exception as e:
@@ -36,7 +43,7 @@ def receive_responses(client_socket):
     """
     Receives responses from the load balancer and updates the average response time.
     """
-    global packet_id_timestamp, avg_response_time, alpha
+    global packet_id_timestamp, avg_response_time, alpha, pack_rec, packet_id_timestamp_lock
     while True:
         try:
             response = client_socket.recv(1024).decode('utf-8')
@@ -47,13 +54,17 @@ def receive_responses(client_socket):
             # try:
             #     packet_id
             try:
-                response_time = time.time() - packet_id_timestamp[int(packet_id)]
-                pack_rec += 1
-                del packet_id_timestamp[int(packet_id)]
+                response_time = time.time() 
+                with packet_id_timestamp_lock:
+                    response_time = response_time - packet_id_timestamp[int(packet_id)]
+                    with packet_rec_lock:
+                        pack_rec += 1
+                    del packet_id_timestamp[int(packet_id)]
                 avg_response_time = alpha * response_time + (1 - alpha) * avg_response_time
                 # Update the displayed average response time
                 label_avg_response_time.config(text="Average Response Time: {:.4f} seconds".format(avg_response_time))
             except Exception as e:
+                # print("Error updating response time: {}".format(e)) 
                 pass
         except Exception as e:
             print("Error receiving response: {}".format(e))
@@ -99,16 +110,27 @@ def connect_to_load_balancer():
             btn_start_requests.config(state="normal")
 
             # Save the socket for use in other threads
+            label_throughput.grid(row=1, column=0, columnspan=2, pady=10)
             root.client_socket = client_socket
 
     except Exception as e:
         label_status.config(text="Connection failed: {}".format(e), fg="red")
 
-def cal_throughput():
+def calculate_throughput():
     global pack_sent, pack_rec
     while True:
         time.sleep(1)
-        print("Throughput%: ",(pack_rec-pack_sent)*100)
+        if pack_sent > 0:
+            throughput_percentage = (pack_rec*(100.0) / pack_sent) 
+        else:
+            throughput_percentage = 0.0
+        # Update the throughput label
+        label_throughput.config(text="Throughput: {:.2f}%".format(throughput_percentage))
+        with pack_sent_lock:
+            pack_sent = 0   
+        with packet_rec_lock:
+            pack_rec = 0
+
 
 def exit_client():
     """
@@ -175,7 +197,13 @@ btn_start_requests.config(state="disabled")
 
 # Label for displaying average response time
 label_avg_response_time = tk.Label(root, text="The client hasn't received any responses yet.")
-label_avg_response_time.grid_forget()  # Initially hidden
+label_avg_response_time.grid_forget()  
+
+label_throughput = tk.Label(root, text="Throughput: 0.00%")
+label_throughput.grid_forget() 
+
+
+
 
 # Create a separate thread that terminates the program after typing "exit"
 threading.Thread(target=exit_client, daemon=True).start()
