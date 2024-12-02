@@ -1,8 +1,5 @@
 class LRTScheduler:
     def __init__(self):
-        """
-        Initializes the Least Response Time scheduler.
-        """
         self.servers = []  
 
     def update_servers(self, server_details):

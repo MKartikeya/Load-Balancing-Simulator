@@ -2,16 +2,15 @@ import Queue
 
 class my_scheduler:
     def __init__(self):
-        self.servers = []   #list of servers 
-        self.current_load = []  #list of current loads on the servers
-        self.capacity = []  #list of capacities of the servers
-        self.q = [Queue.Queue() for _ in range(self.servers.size)]   #list of last 5 response times
+        self.servers = []   
+        self.current_load = []  
+        self.capacity = []  
+        self.q = [Queue.Queue() for _ in range(self.servers.size)]  
         self.avg_resp_time = [] 
         
         
     def update_servers(self, server_list):
         #self.servers = server_list
-        #handle queue , avg response time array when server is added or removed
         return
 
     def get_next_server(self):

@@ -8,7 +8,6 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 
-# Global variables
 packet_queue = Queue()
 processing_time = 0.5
 server_ip = None
@@ -23,32 +22,21 @@ avg_response_time = 0
 lock = threading.Lock()
 # packet_queue_lock = threading.Lock()
 
-# Metrics for plotting
+#METRICS
 metrics = {"Packet Loss": 0, "Load": 0, "Average Response Time": 0, "Incoming Packet Rate": 0}
 server_socket = None
 
 def update_efficiency(efficiency):
-    """
-    Adjust the server's response time based on efficiency slider value.
-    """
     global processing_time, server_ip, server_socket
     with lock:
         processing_time = (0.5 * 100) / efficiency
-        # send a packet to the server to update the response time with header RTIME
         if server_socket:
             server_socket.sendall("RTIME,{},{}".format(processing_time,server_ip).encode('utf-8'))
-
-        
-
         # print(processing_time)
         
 
 def update_metrics():
-    """
-    Updates metrics periodically for plotting.
-    """
     while True:
-        # with lock:
         metrics["Packet Loss"]  = 0
         if packets_received>0:
             metrics["Packet Loss"] = (packets_lost/packets_received)*100
@@ -68,9 +56,6 @@ def update_metrics():
     # root.after(500, update_metrics)
 
 def calculate_packet_rate():
-    """
-    Calculates the incoming packet rate every second.
-    """
     global packets_received, incoming_packet_rate
     while True:
         time.sleep(1)
@@ -79,9 +64,6 @@ def calculate_packet_rate():
             packets_received = 0
 
 def plot_metrics():
-    """
-    Continuously updates the selected metric in a live plot.
-    """
     fig, ax = plt.subplots()
     x_data, y_data = [], []
 
@@ -91,7 +73,6 @@ def plot_metrics():
             with lock:
                 y_data.append(metrics[selected_metric])
             x_data.append(time.time())
-            #keep the most recent points upto a max of 100
             if len(x_data) > 100:
                 x_data.pop(0)
                 y_data.pop(0)
@@ -121,7 +102,7 @@ def listen_for_requests(server_socket):
                 with lock:
                     packets_received += 1
                 if packet_queue.qsize() < buffer_size:
-                    print(request)
+                    # print(request)
                     packet_queue.put(request)
                 else:
                     with lock:
@@ -182,7 +163,6 @@ def connect_to_load_balancer():
             label_avg_response_time.grid(row=9, column=0, padx=10, pady=5)
             label_packet_loss.grid(row=7, column=0, padx=10, pady=5)
             # label_incoming_packet_rate.grid(row=10, column=0, padx=10, pady=5)
-            # Start listening for requests and handling them
             threading.Thread(target=listen_for_requests, args=(server_socket,), daemon=True).start()
             threading.Thread(target=handle_requests, args=(server_socket,), daemon=True).start()
         else:
@@ -207,6 +187,7 @@ label_server_ip.grid(row=0, column=0, padx=10, pady=5)
 entry_server_ip = tk.Entry(root)
 entry_server_ip.grid(row=0, column=1, padx=10, pady=5)
 
+
 label_lb_ip = tk.Label(root, text="Load Balancer IP Address:")
 label_lb_ip.grid(row=1, column=0, padx=10, pady=5)
 entry_lb_ip = tk.Entry(root)
@@ -224,14 +205,13 @@ efficiency_slider = tk.Scale(root, from_=1, to=100, orient=tk.HORIZONTAL, comman
 efficiency_slider.grid(row=4, column=1, padx=10, pady=5)
 
 plot_selection = ttk.Combobox(root, values=list(metrics.keys()))
-plot_selection.set("Packet Loss")  # Default selection
+plot_selection.set("Packet Loss")  
 plot_selection.grid(row=5, column=0, columnspan=2, pady=10)
 
 btn_plot = tk.Button(root, text="Plot", command=plot_metrics)
 btn_plot.grid(row=6, column=0, columnspan=2, pady=10)
 efficiency_slider.set(100)
 
-#display packet loss %, load %, average response time, incoming packet rate as labels
 label_packet_loss = tk.Label(root, text="Packet Loss: 0%", anchor="center")
 label_packet_loss.grid(row=7, column=0, columnspan=2, pady=5)
 
@@ -245,7 +225,6 @@ label_avg_response_time.grid(row=9, column=0, columnspan=2, pady=5)
 # label_incoming_packet_rate.grid(row=10, column=0, columnspan=2, pady=5)
 
 
-# Threads
 # threading.Thread(target=exit_program, daemon=True).start()
 threading.Thread(target=calculate_packet_rate, daemon=True).start()
 threading.Thread(target=update_metrics, daemon=True).start()

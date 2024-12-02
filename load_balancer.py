@@ -6,42 +6,25 @@ from algorithms.rr import RoundRobinScheduler
 from algorithms.random import RandomScheduler
 from algorithms.lrtpp import LRTScheduler
 from collections import OrderedDict
-# Dictionary to store client IPs and their names
 clients = {}
-# Dictionary to store server details: IP, efficiency, and response time
 servers = OrderedDict()
-# List of available client IP addresses
 available_client_ips = ["10.0.0.1", "10.0.0.2","10.0.0.3","10.0.0.4","1","2","3","4","5","6","7","8","9","10","11","12","13","14","15"]
-# List of available server IP addresses
 available_server_ips = ["10.0.0.1", "10.0.0.2","10.0.0.3","10.0.0.4","10.0.0.5","10.0.0.6","10.0.0.7","1","2","3","4","5","6","7","8","9","10","11","12","13","14","15"]
-# Mapping of sockets to IPs (clients or servers)
 client_sockets = {}
-# Mapping of server IPs to their respective sockets
 server_sockets = {}
-#packet id
 packet_id = 0
-#alpha
 alpha = 0.75
-#packet queue
 packet_queue = Queue()
-#queue lock
 queue_lock = Lock()
-#packet lock
 packet_id_lock = Lock()
-#packet id and time stamp lock
 packet_id_timestamp_lock = Lock()
-# Round-robin scheduler for load balancing
 scheduler = RoundRobinScheduler()
 # scheduler = RandomScheduler()
 # scheduler = LRTScheduler()
-#packet id and time stamp mappings
 packet_id_timestamp = {}
 server_queued_packets = {}
 
 def handle_request(client_socket):
-    """
-    Handles intial connection requests from clients and servers.
-    """
     try:
         data = client_socket.recv(1024).decode('utf-8')
         if not data:
@@ -57,16 +40,12 @@ def handle_request(client_socket):
 
 
 def handle_client(client_socket, data):
-    """
-    Handles communication with a client.
-    """
     global packet_id
     global packet_id_timestamp
     global packet_queue
     client_ip = None  
     try:
-        _, client_name, client_ip = data.split(",")  # Extract client details
-        # check if client IP is available
+        _, client_name, client_ip = data.split(",") 
         if client_ip in available_client_ips:
             available_client_ips.remove(client_ip)
             clients[client_ip] = client_name
@@ -93,7 +72,7 @@ def handle_client(client_socket, data):
                     request = "{},{}".format(packet_id, request)
                     with queue_lock:
                         packet_queue.put({"client_ip": client_ip, "request": request})
-                        print("Request from client {} added to the queue.".format(client_ip))
+                        # print("Request from client {} added to the queue.".format(client_ip))
     except Exception as e:
         print("Error handling client {}: {}".format(client_ip, str(e)))
     finally:
@@ -107,7 +86,7 @@ def handle_client(client_socket, data):
 
 
 def handle_server(server_socket, data):
-    server_ip = None  # To track the server's assigned IP
+    server_ip = None 
     try:
         _, server_ip = data.split(",",1)
         if server_ip in available_server_ips:
@@ -141,17 +120,15 @@ def handle_server(server_socket, data):
                 break
             else:
                 # server_queued_packets[server_ip] -= 1
-                # if response has RTIME as header then update the server details. response in form of RTIME,
                 if response.startswith("RTIME"):
                     try:
-                        # split to three parts RTIME,response time, server ip
                         _,processing_time,server_ip = response.split(",",2)
                         servers[server_ip]["processing_time"] = processing_time
                     except Exception as e:
                         print("Error updating server  details: {}".format(str(e)))
                 else:
                     update_servers(response,server_ip)
-                    print(response)
+                    # print(response)
     except Exception as e:
         print("Error handling server {}: {}".format(server_ip, str(e)))
     finally:
@@ -163,11 +140,6 @@ def handle_server(server_socket, data):
             print("Server {} disconnected.".format(server_ip))
 
 def update_servers(response,server_ip):
-    """
-    Updates the server details with the response time and forwards to client.
-    Args:
-        response (str): The response packet from the server.
-    """
     try:
         _,packet_id_,client_ip,packet = response.split(",",3)
         observed_time = 0
@@ -177,18 +149,14 @@ def update_servers(response,server_ip):
         servers[server_ip]["response_time"] = observed_time*alpha + (1-alpha)*float(servers[server_ip]["response_time"])
         servers[server_ip]["queue_length"] = max(0,servers[server_ip]["queue_length"]-1)
         scheduler.update_servers([details for _, details in servers.items()])
-        print(response)
+        # print(response)
         client_socket = client_sockets[client_ip]
         client_socket.sendall(response.encode("utf-8"))
-        #extract the client ip and forward to the client
     except Exception as e:
         print("Error updating server details: {}".format(str(e)))
 
 
 def load_balance():
-    """
-    Processes requests from the queue and forwards them to the appropriate server.
-    """
     while True:
         if not packet_queue.empty():
             with queue_lock:
@@ -205,10 +173,9 @@ def load_balance():
                     
                     server_socket = selected_server["socket"]
                     server_socket.sendall(client_request.encode("utf-8"))
-                    #update the packet id and timestamp
                     with packet_id_timestamp_lock:
                         packet_id_timestamp[packet_id_] = time.time()
-                    print("Forwarded request from {} to server {}".format(client_ip, selected_server["server_ip"]))
+                    # print("Forwarded request from {} to server {}".format(client_ip, selected_server["server_ip"]))
                 except Exception as e:
                     print("Error forwarding request to server: {}".format(str(e)))
             else:
@@ -222,11 +189,8 @@ def exit_program():
     exit()
 
 def start_load_balancer():
-    """
-    Starts the load balancer to accept client and server connections.
-    """
     server_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
-    server_socket.bind(('10.0.0.3', 20001))  # Listen on load balancer IP and port
+    server_socket.bind(('10.0.0.3', 20001))  
     server_socket.listen(5)
     print("Load Balancer is running ...")
     Thread(target=load_balance, daemon=True).start()
