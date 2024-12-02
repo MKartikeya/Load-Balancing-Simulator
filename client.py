@@ -44,11 +44,14 @@ def receive_responses(client_socket):
             print("Received response: {}".format(response))
             # try:
             #     packet_id
-            response_time = time.time() - packet_id_timestamp[int(packet_id)]
-            del packet_id_timestamp[int(packet_id)]
-            avg_response_time = alpha * response_time + (1 - alpha) * avg_response_time
-            # Update the displayed average response time
-            label_avg_response_time.config(text="Average Response Time: {:.4f} seconds".format(avg_response_time))
+            try:
+                response_time = time.time() - packet_id_timestamp[int(packet_id)]
+                del packet_id_timestamp[int(packet_id)]
+                avg_response_time = alpha * response_time + (1 - alpha) * avg_response_time
+                # Update the displayed average response time
+                label_avg_response_time.config(text="Average Response Time: {:.4f} seconds".format(avg_response_time))
+            except Exception as e:
+                pass
         except Exception as e:
             print("Error receiving response: {}".format(e))
             break
@@ -162,7 +165,7 @@ btn_start_requests.grid(row=6, column=0, columnspan=2, pady=10)
 btn_start_requests.config(state="disabled")
 
 # Label for displaying average response time
-label_avg_response_time = tk.Label(root, text="")
+label_avg_response_time = tk.Label(root, text="The client hasn't received any responses yet.")
 label_avg_response_time.grid_forget()  # Initially hidden
 
 # Create a separate thread that terminates the program after typing "exit"

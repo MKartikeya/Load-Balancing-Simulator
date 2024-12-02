@@ -101,6 +101,7 @@ def listen_for_requests(server_socket):
                 with lock:
                     packets_received += 1
                 if packet_queue.qsize() < buffer_size:
+                    print(request)
                     packet_queue.put(request)
                 else:
                     with lock:
@@ -117,6 +118,7 @@ def handle_requests(server_socket):
         if not packet_queue.empty():
             request = packet_queue.get()
             time.sleep(response_time)
+            # print(request)
             # print(response_time)
             with lock:
                 packet_id, _ = request.split(",", 1)
@@ -124,7 +126,7 @@ def handle_requests(server_socket):
                 avg_response_time = 0.1 * observed_time + 0.9 * avg_response_time
                 del packet_id_time_map[packet_id]
             response = "Request processed by server {},{}".format(server_ip, request)
-            print(response)
+            # print(response)
             server_socket.sendall(response.encode('utf-8'))
 
 def connect_to_load_balancer():

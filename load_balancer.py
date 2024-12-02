@@ -30,8 +30,8 @@ packet_id_lock = Lock()
 #packet id and time stamp lock
 packet_id_timestamp_lock = Lock()
 # Round-robin scheduler for load balancing
-scheduler = RoundRobinScheduler()
-# scheduler = RandomScheduler()
+# scheduler = RoundRobinScheduler()
+scheduler = RandomScheduler()
 #packet id and time stamp mappings
 packet_id_timestamp = {}
 server_queued_packets = {}
