@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 packet_queue = Queue()
 processing_time = 0.5
 server_ip = None
-buffer_size = 1024
+buffer_size = 50
 packets_received = 0
 packets_lost = 0
 incoming_packet_rate = 0
@@ -47,8 +47,8 @@ def update_metrics():
     """
     Updates metrics periodically for plotting.
     """
-    # while True:
-    with lock:
+    while True:
+        # with lock:
         metrics["Packet Loss"]  = 0
         if packets_received>0:
             metrics["Packet Loss"] = (packets_lost/packets_received)*100
@@ -64,8 +64,8 @@ def update_metrics():
         # label_incoming_packet_rate.config(text="Incoming Packet Rate: {} packets/second".format(metrics["Incoming Packet Rate"]))   
         
         # print(metrics["Packet Loss"])
-    # time.sleep(1)
-    root.after(1000, update_metrics)
+        time.sleep(1)
+    # root.after(500, update_metrics)
 
 def calculate_packet_rate():
     """
@@ -248,6 +248,6 @@ label_avg_response_time.grid(row=9, column=0, columnspan=2, pady=5)
 # Threads
 # threading.Thread(target=exit_program, daemon=True).start()
 threading.Thread(target=calculate_packet_rate, daemon=True).start()
-# threading.Thread(target=update_metrics, daemon=True).start()
-root.after(1000, update_metrics)
+threading.Thread(target=update_metrics, daemon=True).start()
+# root.after(500, update_metrics)
 root.mainloop()
