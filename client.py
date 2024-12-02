@@ -3,16 +3,11 @@ import socket
 import threading
 import time
 from queue import Queue
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import matplotlib.pyplot as plt
 
 packet_id = 0
 packet_id_timestamp = {}
 avg_response_time = 0
 alpha = 0.25  # Smoothing factor for exponential moving average
-
-response_times = []  # To store response times for plotting
-time_stamps = []     # To store timestamps for x-axis in the plot
 
 
 def send_requests(client_socket, rps):
@@ -39,27 +34,19 @@ def receive_responses(client_socket):
     """
     Receives responses from the load balancer and updates the average response time.
     """
-    global packet_id_timestamp, avg_response_time, alpha, response_times, time_stamps
+    global packet_id_timestamp, avg_response_time, alpha
     while True:
         try:
             response = client_socket.recv(1024).decode('utf-8')
             if not response:
                 break
-            _, load_id, client_ip, client_name, packet_id = response.split(",", 4)
+            _,load_id,client_ip, client_name, packet_id = response.split(",",4)
+            print("Received response: {}".format(response))
             response_time = time.time() - packet_id_timestamp[int(packet_id)]
             del packet_id_timestamp[int(packet_id)]
             avg_response_time = alpha * response_time + (1 - alpha) * avg_response_time
-            
-            # Update average response time on the GUI
+            # Update the displayed average response time
             label_avg_response_time.config(text="Average Response Time: {:.4f} seconds".format(avg_response_time))
-            
-            # Update data for the plot
-            response_times.append(avg_response_time)
-            time_stamps.append(len(response_times))
-            
-            # Update the plot if it is visible
-            if plot_visible.get():
-                update_plot()
         except Exception as e:
             print("Error receiving response: {}".format(e))
             break
@@ -109,6 +96,14 @@ def connect_to_load_balancer():
     except Exception as e:
         label_status.config(text="Connection failed: {}".format(e), fg="red")
 
+def exit_client():
+    """
+    Closes the client socket and exits the application.
+    """
+    while True:
+        if input() == "exit":
+            root.destroy()
+            exit()
 
 def start_sending_requests():
     rps = int(entry_rps.get())
@@ -125,37 +120,6 @@ def start_sending_requests():
     # Start threads for sending requests and receiving responses
     threading.Thread(target=send_requests, args=(client_socket, rps), daemon=True).start()
     threading.Thread(target=receive_responses, args=(client_socket,), daemon=True).start()
-
-
-def update_plot():
-    """
-    Updates the matplotlib plot with new data.
-    """
-    if len(response_times) > 1:
-        ax.clear()
-        ax.plot(time_stamps, response_times, label="Average Response Time", color="blue")
-        ax.set_xlabel("Time (Seconds)")
-        ax.set_ylabel("Response Time (Seconds)")
-        ax.set_title("Real-Time Response Time")
-        ax.legend()
-        canvas.draw()
-
-
-def toggle_plot():
-    """
-    Toggles the visibility of the plot when the button is clicked.
-    """
-    if plot_visible.get():
-        canvas.get_tk_widget().grid(row=7, column=0, columnspan=2, pady=10)
-    else:
-        canvas.get_tk_widget().grid_forget()
-
-
-def quit_program():
-    """
-    Closes the GUI window without stopping the background threads.
-    """
-    root.quit()
 
 
 # GUI setup
@@ -199,23 +163,6 @@ btn_start_requests.config(state="disabled")
 label_avg_response_time = tk.Label(root, text="")
 label_avg_response_time.grid_forget()  # Initially hidden
 
-# Matplotlib figure setup
-fig, ax = plt.subplots(figsize=(5, 4))
-canvas = FigureCanvasTkAgg(fig, master=root)
-
-# Variable to track plot visibility
-plot_visible = tk.BooleanVar(value=False)
-
-# Button to toggle the plot visibility
-btn_toggle_plot = tk.Button(root, text="Show/Hide Plot", command=toggle_plot)
-btn_toggle_plot.grid(row=7, column=0, columnspan=2, pady=10)
-
-# Quit Button
-btn_quit = tk.Button(root, text="Quit", command=quit_program)
-btn_quit.grid(row=8, column=0, columnspan=2, pady=10)
-
-# Handle window close
-root.protocol("WM_DELETE_WINDOW", quit_program)
-
-# Start the GUI loop
+# Create a separate thread that terminates the program after typing "exit"
+threading.Thread(target=exit_client, daemon=True).start()
 root.mainloop()

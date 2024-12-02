@@ -186,7 +186,8 @@ def load_balance():
             selected_server = scheduler.get_next_server()
             if selected_server:
                 try:
-                    server_queued_packets[selected_server["server_ip"]] += 1
+                    # server_queued_packets[selected_server["server_ip"]] += 1
+                    
                     server_socket = selected_server["socket"]
                     server_socket.sendall(client_request.encode("utf-8"))
                     #update the packet id and timestamp

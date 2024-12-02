@@ -68,8 +68,8 @@ def plot_metrics():
             selected_metric = plot_selection.get()
             with lock:
                 y_data.append(metrics[selected_metric])
-            x_data.append(time.time() - start_time)
-            # Keep the most recent 100 points
+            x_data.append(time.time())
+            #keep the most recent points upto a max of 100
             if len(x_data) > 100:
                 x_data.pop(0)
                 y_data.pop(0)
@@ -80,15 +80,10 @@ def plot_metrics():
             ax.set_xlabel("Time (s)")
             ax.set_ylabel(selected_metric)
             canvas.draw()
-
-            # Update current metric value label
-            current_metric_value.config(text="Current {}: {}}.".format(selected_metric, metrics[selected_metric]))
             time.sleep(1)
 
     canvas = FigureCanvasTkAgg(fig, root)
     canvas.get_tk_widget().grid(row=7, column=0, columnspan=2)
-
-    start_time = time.time()
     threading.Thread(target=update_plot, daemon=True).start()
 
 def listen_for_requests(server_socket):
@@ -96,15 +91,17 @@ def listen_for_requests(server_socket):
     while True:
         try:
             request = server_socket.recv(1024).decode('utf-8')
-            packet_id, _ = request.split(",", 1)
-            packet_id_time_map[packet_id] = time.time()
-            with lock:
-                packets_received += 1
-            if packet_queue.qsize() < buffer_size:
-                packet_queue.put(request)
-            else:
+            print("Received request: {}".format(request))
+            if request !="":
+                packet_id, _ = request.split(",", 1)
+                packet_id_time_map[packet_id] = time.time()
                 with lock:
-                    packets_lost += 1
+                    packets_received += 1
+                if packet_queue.qsize() < buffer_size:
+                    packet_queue.put(request)
+                else:
+                    with lock:
+                        packets_lost += 1
         except Exception as e:
             print("Error receiving data: {}".format(e))
             break
@@ -133,6 +130,10 @@ def connect_to_load_balancer():
         return
 
     try:
+        print('Connecting to load balancer')
+        print('Server IP:', server_ip)
+        print('Load Balancer IP:', load_balancer_ip)
+
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_socket.connect((load_balancer_ip, 20001))
 
@@ -145,6 +146,8 @@ def connect_to_load_balancer():
             root.server_socket = server_socket
             entry_server_ip.grid_forget()
             entry_lb_ip.grid_forget()
+            label_server_ip.grid_forget()
+            label_lb_ip.grid_forget()
             btn_connect.grid_forget()
             # Start listening for requests and handling them
             threading.Thread(target=listen_for_requests, args=(server_socket,), daemon=True).start()
@@ -162,19 +165,9 @@ def exit_program():
             root.destroy()
             exit()
 
-# Function to quit the server GUI 
-def quit_server():
-    print("Server GUI is quitting...")
-    root.quit()  # Stops the Tkinter event loop 
-    root.destroy()  # Closes the GUI window
-
 # GUI setup
 root = tk.Tk()
 root.title("Server Setup and Metrics")
-
-# Add Quit button to the GUI
-btn_quit = tk.Button(root, text="Quit GUI", command=quit_server)
-btn_quit.grid(row=9, column=0, columnspan=2, pady=10)
 
 label_server_ip = tk.Label(root, text="Server IP Address:")
 label_server_ip.grid(row=0, column=0, padx=10, pady=5)
@@ -203,10 +196,6 @@ plot_selection.grid(row=5, column=0, columnspan=2, pady=10)
 
 btn_plot = tk.Button(root, text="Plot", command=plot_metrics)
 btn_plot.grid(row=6, column=0, columnspan=2, pady=10)
-
-# Label for current metric value
-current_metric_value = tk.Label(root, text="")
-current_metric_value.grid(row=8, column=0, columnspan=2, pady=5)
 
 # Threads
 threading.Thread(target=exit_program, daemon=True).start()
