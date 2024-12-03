@@ -11,8 +11,10 @@ avg_response_time = 0
 alpha = 0.25  
 pack_sent = 0
 pack_rec = 0
+rps = 0
 pack_sent_lock = threading.Lock()
 packet_rec_lock = threading.Lock()
+throughput_percentage = 0
 
 def send_requests(client_socket, rps):
     global packet_id
@@ -46,6 +48,7 @@ def receive_responses(client_socket):
             # print("Received response: {}".format(response))
             # try:
             #     packet_id
+            # print(response)
             try:
                 response_time = time.time() 
                 with packet_id_timestamp_lock:
@@ -54,14 +57,24 @@ def receive_responses(client_socket):
                         pack_rec += 1
                     del packet_id_timestamp[int(packet_id)]
                 avg_response_time = alpha * response_time + (1 - alpha) * avg_response_time
+                # throughput_percentage = min(100.0,10.0/avg_response_time) 
                 label_avg_response_time.config(text="Average Response Time: {:.4f} seconds".format(avg_response_time))
+                # label_throughput.config(text="Throughput: {:.2f}%".format(throughput_percentage))
             except Exception as e:
-                print("Error updating response time: {}".format(e)) 
+                # print("Error updating response time: {}".format(e)) 
                 pass
         except Exception as e:
             print("Error receiving response: {}".format(e))
             break
 
+def calculate_throughput():
+    global avg_response_time, pack_rec, pack_sent, throughput_percentage
+    while True:
+        time.sleep(1)
+        with packet_rec_lock:
+            throughput_percentage = throughput_percentage*0.8+0.2*min(100.0, pack_rec*100.0/max(1,rps))
+            label_throughput.config(text="Throughput: {:.2f}%".format(throughput_percentage))
+            pack_rec = 0
 
 def connect_to_load_balancer():
     client_name = entry_name.get()
@@ -103,20 +116,6 @@ def connect_to_load_balancer():
     except Exception as e:
         label_status.config(text="Connection failed: {}".format(e), fg="red")
 
-def calculate_throughput():
-    global pack_sent, pack_rec
-    while True:
-        time.sleep(1)
-        if pack_sent > 0:
-            throughput_percentage = min(100.0,(pack_rec*(100.0) / pack_sent)) 
-        else:
-            throughput_percentage = 0.0
-        label_throughput.config(text="Throughput: {:.2f}%".format(throughput_percentage))
-        with pack_sent_lock:
-            pack_sent = 0   
-        with packet_rec_lock:
-            pack_rec = 0
-
 
 def exit_client():
     """
@@ -128,6 +127,7 @@ def exit_client():
             exit()
 
 def start_sending_requests():
+    global rps
     rps = int(entry_rps.get())
     client_socket = root.client_socket
 

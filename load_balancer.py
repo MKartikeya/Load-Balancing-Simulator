@@ -18,9 +18,9 @@ packet_queue = Queue()
 queue_lock = Lock()
 packet_id_lock = Lock()
 packet_id_timestamp_lock = Lock()
-scheduler = RoundRobinScheduler()
+# scheduler = RoundRobinScheduler()
 # scheduler = RandomScheduler()
-# scheduler = LRTScheduler()
+scheduler = LRTScheduler()
 packet_id_timestamp = {}
 server_queued_packets = {}
 
@@ -93,7 +93,7 @@ def handle_server(server_socket, data):
             message ="1"
             server_socket.send(message.encode('utf-8'))
             server_sockets[server_ip] = server_socket
-            servers[server_ip] = {"server_ip": server_ip, "efficiency": 0, "response_time":0 ,"socket": server_socket,"load":0,"queue_length":0,"processing_time":0.5}
+            servers[server_ip] = {"server_ip": server_ip, "efficiency": 0, "response_time":0 ,"socket": server_socket,"load":0,"queue_length":0,"processing_time":0.2}
             print("Server connected with IP: {}".format(server_ip))
         else:
             server_socket.send("0".encode('utf-8'))

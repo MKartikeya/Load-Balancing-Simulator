@@ -9,10 +9,11 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 
 packet_queue = Queue()
-processing_time = 0.5
+processing_time = 0.2
 server_ip = None
 buffer_size = 50
 packets_received = 0
+tot_packets_received = 0
 packets_lost = 0
 incoming_packet_rate = 0
 packet_id_time_map = {}
@@ -29,7 +30,7 @@ server_socket = None
 def update_efficiency(efficiency):
     global processing_time, server_ip, server_socket
     with lock:
-        processing_time = (0.5 * 100) / efficiency
+        processing_time = (0.2 * 100) / efficiency
         if server_socket:
             server_socket.sendall("RTIME,{},{}".format(processing_time,server_ip).encode('utf-8'))
         # print(processing_time)
@@ -38,8 +39,8 @@ def update_efficiency(efficiency):
 def update_metrics():
     while True:
         metrics["Packet Loss"]  = 0
-        if packets_received>0:
-            metrics["Packet Loss"] = (packets_lost/packets_received)*100
+        if tot_packets_received>0:
+            metrics["Packet Loss"] = min(100.0,(packets_lost/tot_packets_received)*100)
         metrics["Average Response Time"] = avg_response_time
         metrics["Incoming Packet Rate"] = incoming_packet_rate
         # metrics["Load"] = packet_queue.qsize() / buffer_size
@@ -90,7 +91,7 @@ def plot_metrics():
     threading.Thread(target=update_plot, daemon=True).start()
 
 def listen_for_requests(server_socket):
-    global packets_received, packets_lost
+    global packets_received, packets_lost, tot_packets_received
     while True:
         try:
             request = server_socket.recv(1024).decode('utf-8')
@@ -101,6 +102,7 @@ def listen_for_requests(server_socket):
                 packet_id_time_map[packet_id] = time.time()
                 with lock:
                     packets_received += 1
+                    tot_packets_received += 1
                 if packet_queue.qsize() < buffer_size:
                     # print(request)
                     packet_queue.put(request)
