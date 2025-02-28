@@ -18,9 +18,9 @@ packet_queue = Queue()
 queue_lock = Lock()
 packet_id_lock = Lock()
 packet_id_timestamp_lock = Lock()
-# scheduler = RoundRobinScheduler()
+scheduler = RoundRobinScheduler()
 # scheduler = RandomScheduler()
-scheduler = LRTScheduler()
+# scheduler = LRTScheduler()
 packet_id_timestamp = {}
 server_queued_packets = {}
 
@@ -123,7 +123,7 @@ def handle_server(server_socket, data):
                 if response.startswith("RTIME"):
                     try:
                         _,processing_time,server_ip = response.split(",",2)
-                        servers[server_ip]["processing_time"] = processing_time
+                        servers[server_ip]["processing_time"] = float(processing_time)
                     except Exception as e:
                         print("Error updating server  details: {}".format(str(e)))
                 else:

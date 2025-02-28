@@ -44,7 +44,7 @@ def update_metrics():
         metrics["Average Response Time"] = avg_response_time
         metrics["Incoming Packet Rate"] = incoming_packet_rate
         # metrics["Load"] = packet_queue.qsize() / buffer_size
-        metrics["Load"] = max(100.0,incoming_packet_rate*100.0/processing_time)
+        metrics["Load"] = max(0.0,min(incoming_packet_rate*100.0/processing_time,100.0))
 
 
         label_packet_loss.config(text="Packet Loss: {:.2f}%".format(metrics["Packet Loss"]))
