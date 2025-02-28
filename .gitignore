@@ -1,7 +1,7 @@
 floodlight/
-h1-arp.sh
-h2-arp.sh
-h3-arp.sh
-h4-arp.sh
-h5-arp.sh
-star.p4
+/h1-arp.sh
+/h2-arp.sh
+/h3-arp.sh
+/h4-arp.sh
+/h5-arp.sh
+/star.p4
